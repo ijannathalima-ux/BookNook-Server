@@ -6,7 +6,7 @@ import 'dotenv/config'
 
 const app = express();
 const PORT = 5000;
-//app.use(cors());
+app.use(cors());
 app.use(express.json());
 
 
@@ -34,10 +34,6 @@ app.post("/books", async (req, res) => {
 app.get("/books", async (req, res) => {
     const result = await booksCollection.find().toArray()
     res.send(result);
-})
-
-app.get("/", (req, res) => {
-    res.send("Hello halima!!")
 })
 
 app.listen(PORT, () => {
