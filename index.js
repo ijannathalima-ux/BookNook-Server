@@ -84,6 +84,31 @@ app.patch("/books/:id", async (req, res) => {
   }
 });
 
+app.delete("/books/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await booksCollection.deleteOne({
+      _id: new ObjectId(id),
+    });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).send({
+        message: "Book not found!",
+      })
+    }
+
+    res.send({
+      message: "Book deleted successfully!",
+    })
+  }
+  catch (error) {
+    res.status(500).send({
+      message: "Failed to delete book!",
+    });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`)
