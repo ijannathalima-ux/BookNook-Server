@@ -24,6 +24,7 @@ export async function connectToMongoDB() {
 const connectClient = await connectToMongoDB();
 const db = connectClient.db("book-nook");
 const booksCollection = db.collection("books");
+const borrowsCollection = db.collection("borrows");
 
 app.post("/books", async (req, res) => {
   const bookData = req.body;
@@ -51,6 +52,23 @@ app.get("/books/:id", async (req, res) => {
   const { id } = req.params;
   const result = await booksCollection.findOne({ _id: new ObjectId(id) })
   res.send(result)
+})
+
+app.get("/borrows", async (req, res) => {
+  try {
+    const { userEmail } = req.query;
+
+    const query = userEmail ? { userEmail } : {};
+
+    const result = await borrowsCollection.find(query).toArray();
+
+    res.send(result);
+
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to fetch borrowed books!",
+    });
+  }
 })
 
 
