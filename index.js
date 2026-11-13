@@ -27,7 +27,10 @@ const booksCollection = db.collection("books");
 const borrowsCollection = db.collection("borrows");
 
 app.post("/books", async (req, res) => {
-  const bookData = req.body;
+  const bookData = {
+    ...req.body,
+    copies: Number(req.body.copies),
+  };
   const result = await booksCollection.insertOne(bookData);
   res.send(result);
 })
@@ -70,6 +73,95 @@ app.get("/borrows", async (req, res) => {
     });
   }
 })
+
+app.post("/borrows", async (req, res) => {
+  try {
+    const { bookId, userName, userEmail, borrowDate, returnDate } = req.body;
+    const book = await booksCollection.findOne({
+      _id: new ObjectId(bookId),
+    });
+
+    if (!book) {
+      return res.status(404).send({
+        message: "Book not found!",
+      });
+    }
+
+    if (book.copies <= 0) {
+      return res.status(400).send({
+        message: "No copies available!",
+      });
+    }
+
+    const alreadyBorrowed = await borrowsCollection.findOne({
+      bookId,
+      userEmail,
+    });
+
+    if (alreadyBorrowed) {
+      return res.status(400).send({
+        message: "You have already borrowed this book!",
+      });
+    }
+
+    const updateResult = await booksCollection.updateOne(
+      {
+        _id: new ObjectId(bookId),
+        $expr: {
+          $gt: [{ $toInt: "$copies" }, 0],
+        },
+      },
+      [
+        {
+          $set: {
+            copies: {
+              $subtract: [{ $toInt: "$copies" }, 1],
+            },
+          },
+        },
+      ]
+    );
+
+    if (updateResult.modifiedCount === 0) {
+      return res.status(400).send({
+        message: "No copies available!",
+      });
+    }
+
+    const borrowData = {
+      bookId,
+      bookTitle: book.title,
+      bookImage: book.image,
+      userName,
+      userEmail,
+      borrowDate,
+      returnDate,
+    };
+
+    let result;
+
+    try {
+      result = await borrowsCollection.insertOne(borrowData);
+    } catch (error) {
+      await booksCollection.updateOne(
+        { _id: new ObjectId(bookId) },
+        { $inc: { copies: 1 } }
+      );
+
+      throw error;
+    }
+
+    res.status(201).send({
+      message: "Book borrowed successfully!",
+      result,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({
+      message: "Failed to borrow book!",
+    });
+  }
+});
 
 
 app.patch("/books/:id", async (req, res) => {
