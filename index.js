@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import 'dotenv/config'
 
 
@@ -26,16 +26,65 @@ const db = connectClient.db("book-nook");
 const booksCollection = db.collection("books");
 
 app.post("/books", async (req, res) => {
-    const bookData = req.body;
-    const result = await booksCollection.insertOne(bookData);
-    res.send(result);
+  const bookData = req.body;
+  const result = await booksCollection.insertOne(bookData);
+  res.send(result);
 })
 
 app.get("/books", async (req, res) => {
-    const result = await booksCollection.find().toArray()
+  try {
+    const { userEmail } = req.query;
+
+    const query = userEmail ? { userEmail } : {};
+
+    const result = await booksCollection.find(query).toArray();
+
     res.send(result);
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to fetch books",
+    });
+  }
+});
+
+app.get("/books/:id", async (req, res) => {
+  const { id } = req.params;
+  const result = await booksCollection.findOne({ _id: new ObjectId(id) })
+  res.send(result)
 })
 
+
+app.patch("/books/:id", async (req, res) => {
+  const { id } = req.params;
+  const { _id, ...updatedBook } = req.body;
+
+  try {
+    const result = await booksCollection.updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: updatedBook,
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).send({
+        message: "Book not found!",
+      });
+    }
+
+    res.send({
+      message: "Book updated successfully!",
+      result,
+    });
+
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to update book!",
+    });
+  }
+});
+
+
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`)
+  console.log(`Server is running on port ${PORT}`)
 })
