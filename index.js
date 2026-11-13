@@ -163,6 +163,55 @@ app.post("/borrows", async (req, res) => {
   }
 });
 
+app.delete("/borrows/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const borrow = await borrowsCollection.findOne({
+      _id: new ObjectId(id),
+    });
+
+    if (!borrow) {
+      return res.status(404).send({
+        message: "Borrow record not found!",
+      });
+    }
+
+    const deleteResult = await borrowsCollection.deleteOne({
+      _id: new ObjectId(id),
+    });
+
+    if (deleteResult.deletedCount === 0) {
+      return res.status(404).send({
+        message: "Borrow record not found!",
+      });
+    }
+
+    const updateResult = await booksCollection.updateOne(
+      { _id: new ObjectId(borrow.bookId) },
+      { $inc: { copies: 1 } }
+    );
+
+    if (updateResult.matchedCount === 0) {
+      await borrowsCollection.insertOne(borrow);
+
+      return res.status(404).send({
+        message: "Book not found!",
+      });
+    }
+
+    res.send({
+      message: "Book returned successfully!",
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({
+      message: "Failed to return book!",
+    });
+  }
+});
+
 
 app.patch("/books/:id", async (req, res) => {
   const { id } = req.params;
