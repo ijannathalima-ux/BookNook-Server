@@ -3,12 +3,10 @@ import cors from "cors";
 import { MongoClient, ObjectId } from 'mongodb';
 import 'dotenv/config'
 
-
 const app = express();
 const PORT = 5000;
 app.use(cors());
 app.use(express.json());
-
 
 const client = new MongoClient(process.env.MONGODB_URI);
 export async function connectToMongoDB() {
@@ -35,21 +33,32 @@ app.post("/books", async (req, res) => {
   res.send(result);
 })
 
+
 app.get("/books", async (req, res) => {
   try {
     const { userEmail } = req.query;
+    const limit = Number(req.query.limit);
 
     const query = userEmail ? { userEmail } : {};
 
-    const result = await booksCollection.find(query).toArray();
+    let cursor = booksCollection
+      .find(query)
+      .sort({ createdAt: -1 });
+
+    if (Number.isInteger(limit) && limit > 0) {
+      cursor = cursor.limit(limit);
+    }
+
+    const result = await cursor.toArray();
 
     res.send(result);
   } catch (error) {
     res.status(500).send({
-      message: "Failed to fetch books",
+      message: "Failed to fetch books"
     });
   }
 });
+
 
 app.get("/books/:id", async (req, res) => {
   const { id } = req.params;
